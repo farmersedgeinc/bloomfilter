@@ -4,10 +4,9 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
@@ -47,10 +46,10 @@ func (f *Filter) K() uint64 {
 
 // Add a hashable item, v, to the filter
 func (f *Filter) Add(v hash.Hash64) {
+	h := f.hash(v)
 	f.lock.Lock()
 	defer f.lock.Unlock()
-
-	for _, i := range f.hash(v) {
+	for _, i := range h {
 		// f.setBit(i)
 		i %= f.m
 		f.bits[i>>6] |= 1 << uint(i&0x3f)
@@ -58,15 +57,33 @@ func (f *Filter) Add(v hash.Hash64) {
 	f.n++
 }
 
+// AddC adds a hashable item, v, to the filter, testing for its presence
+// beforehand.
+// false: f definitely does not contain value v
+// true:  f maybe contains value v
+func (f *Filter) AddC(v hash.Hash64) bool {
+	h := f.hash(v)
+	f.lock.Lock()
+	f.lock.Unlock()
+	r := uint64(1)
+	for _, i := range h {
+		i %= f.m
+		r &= (f.bits[i>>6] >> uint(i&0x3f)) & 1
+		f.bits[i>>6] |= 1 << uint(i&0x3f)
+	}
+	f.n++
+	return uint64ToBool(r)
+}
+
 // Contains tests if f contains v
 // false: f definitely does not contain value v
 // true:  f maybe contains value v
 func (f *Filter) Contains(v hash.Hash64) bool {
+	h := f.hash(v)
 	f.lock.RLock()
 	defer f.lock.RUnlock()
-
 	r := uint64(1)
-	for _, i := range f.hash(v) {
+	for _, i := range h {
 		// r |= f.getBit(k)
 		i %= f.m
 		r &= (f.bits[i>>6] >> uint(i&0x3f)) & 1

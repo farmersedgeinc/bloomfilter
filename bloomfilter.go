@@ -107,12 +107,14 @@ func (f *Filter) Copy() (*Filter, error) {
 
 // UnionInPlace merges Bloom filter f2 into f
 func (f *Filter) UnionInPlace(f2 *Filter) error {
-	if !f.IsCompatible(f2) {
-		return errIncompatibleBloomFilters()
-	}
-
 	f.lock.Lock()
 	defer f.lock.Unlock()
+	f2.lock.RLock()
+	defer f2.lock.RUnlock()
+
+	if err := f.verifyCompatible(f2); err != nil {
+		return err
+	}
 
 	for i, bitword := range f2.bits {
 		f.bits[i] |= bitword
@@ -122,13 +124,13 @@ func (f *Filter) UnionInPlace(f2 *Filter) error {
 
 // Union merges f2 and f2 into a new Filter out
 func (f *Filter) Union(f2 *Filter) (out *Filter, err error) {
-	if !f.IsCompatible(f2) {
-		return nil, errIncompatibleBloomFilters()
-	}
-
 	f.lock.RLock()
 	defer f.lock.RUnlock()
-
+	f2.lock.RLock()
+	defer f2.lock.RUnlock()
+	if err := f.verifyCompatible(f2); err != nil {
+		return nil, err
+	}
 	out, err = f.NewCompatible()
 	if err != nil {
 		return nil, err

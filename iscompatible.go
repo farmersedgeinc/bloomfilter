@@ -9,10 +9,12 @@
 // MIT license
 package bloomfilter
 
-import "unsafe"
+import (
+	"fmt"
+)
 
 func uint64ToBool(x uint64) bool {
-	return *(*bool)(unsafe.Pointer(&x)) // #nosec
+	return x != 0
 }
 
 // returns 0 if equal, does not compare len(b0) with len(b1)
@@ -36,5 +38,19 @@ func (f *Filter) IsCompatible(f2 *Filter) bool {
 	compat := f.M() ^ f2.M()
 	compat |= f.K() ^ f2.K()
 	compat |= noBranchCompareUint64s(f.keys, f2.keys)
-	return uint64ToBool(^compat)
+	return !uint64ToBool(compat)
+}
+
+func (f *Filter) verifyCompatible(f2 *Filter) error {
+	e := make([]string, 3)
+	if uint64ToBool(f.M() ^ f2.M()) {
+		e[0] = fmt.Sprintf("M=%d and M=%d", f.K(), f2.K())
+	}
+	if uint64ToBool(^(f.K() ^ f2.K())) {
+		e[1] = fmt.Sprintf("K=%d and K=%d", f.K(), f2.K())
+	}
+	if noBranchCompareUint64s(f.keys, f2.keys) != 0 {
+		e[2] = "Mismatched Keys"
+	}
+	return errIncompatibleBloomFilters(e)
 }

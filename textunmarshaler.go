@@ -4,10 +4,9 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
@@ -16,6 +15,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"io"
+	"sync/atomic"
 )
 
 const (
@@ -47,17 +47,19 @@ func unmarshalTextKeys(r io.Reader, keys []uint64) (err error) {
 	return nil
 }
 
-func unmarshalTextBits(r io.Reader, bits []uint64) (err error) {
+func unmarshalTextBits(r io.Reader, bits []atomic.Uint64) (err error) {
 	_, err = fmt.Fscanf(r, "bits")
 	if err != nil {
 		return err
 	}
 
 	for i := range bits {
-		_, err = fmt.Fscanf(r, bitsFormat, bits[i])
+		var word uint64
+		_, err = fmt.Fscanf(r, bitsFormat, word)
 		if err != nil {
 			return err
 		}
+		bits[i].Store(word)
 	}
 
 	return nil
@@ -143,7 +145,7 @@ func (f *Filter) UnmarshalText(text []byte) error {
 
 	f.m = f2.m
 	f.n = f2.n
-	copy(f.bits, f2.bits)
+	f.setBits(f2.getBits())
 	copy(f.keys, f2.keys)
 
 	return nil

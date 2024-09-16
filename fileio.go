@@ -4,10 +4,9 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
@@ -72,8 +71,8 @@ func ReadFile(filename string) (f *Filter, n int64, err error) {
 
 // WriteTo a Writer w from lossless-compressed Bloom Filter f
 func (f *Filter) WriteTo(w io.Writer) (n int64, err error) {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
+	f.lock.Lock()
+	defer f.lock.Unlock()
 
 	rawW := gzip.NewWriter(w)
 	defer func() {

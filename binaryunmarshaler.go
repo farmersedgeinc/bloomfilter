@@ -4,10 +4,9 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
@@ -16,6 +15,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"io"
+	"sync/atomic"
 )
 
 func unmarshalBinaryHeader(r io.Reader) (k, n, m uint64, err error) {
@@ -47,13 +47,20 @@ func unmarshalBinaryHeader(r io.Reader) (k, n, m uint64, err error) {
 	return k, n, m, err
 }
 
-func unmarshalBinaryBits(r io.Reader, m uint64) (bits []uint64, err error) {
+func unmarshalBinaryBits(r io.Reader, m uint64) (bits []atomic.Uint64, err error) {
 	bits, err = newBits(m)
 	if err != nil {
-		return bits, err
+		return
 	}
-	err = binary.Read(r, binary.LittleEndian, bits)
-	return bits, err
+	for i, _ := range bits {
+		var word uint64
+		err = binary.Read(r, binary.LittleEndian, &word)
+		if err != nil {
+			return
+		}
+		bits[i].Store(word)
+	}
+	return
 
 }
 
@@ -92,10 +99,12 @@ func (f *Filter) UnmarshalBinary(data []byte) (err error) {
 	buf := bytes.NewBuffer(data)
 
 	var k uint64
-	k, f.n, f.m, err = unmarshalBinaryHeader(buf)
+	var n uint64
+	k, n, f.m, err = unmarshalBinaryHeader(buf)
 	if err != nil {
 		return err
 	}
+	f.n.Store(n)
 
 	f.keys, err = unmarshalBinaryKeys(buf, k)
 	if err != nil {

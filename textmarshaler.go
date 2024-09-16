@@ -4,18 +4,17 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import "fmt"
 
 // MarshalText conforms to encoding.TextMarshaler
 func (f *Filter) MarshalText() (text []byte, err error) {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
+	f.lock.Lock()
+	defer f.lock.Unlock()
 
 	s := fmt.Sprintln("k")
 	s += fmt.Sprintln(f.K())
@@ -30,8 +29,8 @@ func (f *Filter) MarshalText() (text []byte, err error) {
 	}
 
 	s += fmt.Sprintln("bits")
-	for w := range f.bits {
-		s += fmt.Sprintf(bitsFormat, w) + nl()
+	for _, w := range f.bits {
+		s += fmt.Sprintf(bitsFormat, w.Load()) + nl()
 	}
 
 	_, hash, err := f.marshal()

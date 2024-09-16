@@ -4,16 +4,16 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
 	"crypto/rand"
 	"encoding/binary"
 	"log"
+	"sync/atomic"
 )
 
 const (
@@ -87,19 +87,20 @@ func NewWithKeys(m uint64, origKeys []uint64) (f *Filter, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Filter{
+	out := Filter{
 		m:    m,
-		n:    0,
 		bits: bits,
 		keys: keys,
-	}, nil
+	}
+	out.n.Store(0)
+	return &out, nil
 }
 
-func newBits(m uint64) ([]uint64, error) {
+func newBits(m uint64) ([]atomic.Uint64, error) {
 	if m < MMin {
 		return nil, errM()
 	}
-	return make([]uint64, (m+63)/64), nil
+	return make([]atomic.Uint64, (m+63)/64), nil
 }
 
 func newKeysBlank(k uint64) ([]uint64, error) {
@@ -121,14 +122,14 @@ func newKeysCopy(origKeys []uint64) (keys []uint64, err error) {
 	return keys, err
 }
 
-func newWithKeysAndBits(m uint64, keys []uint64, bits []uint64, n uint64) (
+func newWithKeysAndBits(m uint64, keys []uint64, bits []atomic.Uint64, n uint64) (
 	f *Filter, err error,
 ) {
 	f, err = NewWithKeys(m, keys)
 	if err != nil {
 		return nil, err
 	}
-	copy(f.bits, bits)
-	f.n = n
+	f.bits = bits
+	f.n.Store(n)
 	return f, nil
 }

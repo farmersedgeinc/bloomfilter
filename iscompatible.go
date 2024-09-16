@@ -33,20 +33,30 @@ func (f *Filter) IsCompatible(f2 *Filter) bool {
 
 	f2.lock.RLock()
 	defer f2.lock.RUnlock()
+	return f.isCompatible(f2)
+}
 
-	// 0 is true, non-0 is false
-	compat := f.M() ^ f2.M()
-	compat |= f.K() ^ f2.K()
-	compat |= noBranchCompareUint64s(f.keys, f2.keys)
-	return !uint64ToBool(compat)
+// IsCompatible is true if f and f2 can be Union()ed together
+func (f *Filter) isCompatible(f2 *Filter) bool {
+	return f.M() == f2.M() &&
+		f.K() == f2.K() &&
+		noBranchCompareUint64s(f.keys, f2.keys) == 0
 }
 
 func (f *Filter) verifyCompatible(f2 *Filter) error {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+
+	f2.lock.RLock()
+	defer f2.lock.RUnlock()
+	if f.isCompatible(f2) {
+		return nil
+	}
 	e := make([]string, 3)
-	if uint64ToBool(f.M() ^ f2.M()) {
+	if f.M() != f2.M() {
 		e[0] = fmt.Sprintf("M=%d and M=%d", f.K(), f2.K())
 	}
-	if uint64ToBool(^(f.K() ^ f2.K())) {
+	if f.K() != f2.K() {
 		e[1] = fmt.Sprintf("K=%d and K=%d", f.K(), f2.K())
 	}
 	if noBranchCompareUint64s(f.keys, f2.keys) != 0 {

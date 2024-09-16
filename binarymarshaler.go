@@ -4,10 +4,9 @@
 //
 // https://github.com/steakknife/bloomfilter
 //
-// Copyright © 2014, 2015, 2018 Barry Allard
+// # Copyright © 2014, 2015, 2018 Barry Allard
 //
 // MIT license
-//
 package bloomfilter
 
 import (
@@ -34,8 +33,6 @@ func (f *Filter) marshal() (buf *bytes.Buffer,
 	hash [sha512.Size384]byte,
 	err error,
 ) {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
 
 	debug("write bf k=%d n=%d m=%d\n", f.K(), f.n, f.m)
 
@@ -61,7 +58,7 @@ func (f *Filter) marshal() (buf *bytes.Buffer,
 		return nil, hash, err
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, f.bits)
+	err = binary.Write(buf, binary.LittleEndian, f.getBits())
 	if err != nil {
 		return nil, hash, err
 	}

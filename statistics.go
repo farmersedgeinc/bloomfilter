@@ -11,17 +11,7 @@ package bloomfilter
 
 import (
 	"math"
-
-	"github.com/steakknife/hamming"
 )
-
-// PreciseFilledRatio is an exhaustive count # of 1's
-func (f *Filter) PreciseFilledRatio() float64 {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-
-	return float64(hamming.CountBitsUint64s(f.getBits())) / float64(f.M())
-}
 
 // N is how many elements have been inserted
 // (actually, how many Add()s have been performed?)
